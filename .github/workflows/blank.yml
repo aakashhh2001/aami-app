@@ -1,67 +1,125 @@
+# This name appears in the GitHub Actions UI
 name: Maven CI/CD — Build, Test, and Deploy to GitHub Packages
 
+# Triggers the workflow on push or pull request events but only for the main branch
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
+# Workflow-level environment variables are available to all jobs and steps
+env:
+  WORKFLOW_VAR: "This is a workflow-level variable"
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'temurin'
+
 jobs:
+  # --- BUILD JOB ---
   build:
-    name:  Build
+    name: Build
     runs-on: ubuntu-latest
+    
+    # Job-level environment variables are available to all steps in this job
+    env:
+      JOB_VAR: "This is a job-level variable for 'build'"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Display Workflow & Runner Contexts
+        run: |
+          echo "Workflow triggered by (github.actor): ${{ github.actor }}"
+          echo "Running on OS (runner.os): ${{ runner.os }}"
+          echo "Using workflow-level var: $WORKFLOW_VAR"
+          echo "Using job-level var: $JOB_VAR"
+
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: ${{ env.JAVA_DISTRIBUTION }} # Using workflow-level env
+          java-version: ${{ env.JAVA_VERSION }}     # Using workflow-level env
           cache: maven
 
       - name: Build project
-        run: mvn -B -DskipTests package
+        # Step-level environment variables are only available to this specific step
+        env:
+          MAVEN_OPTS: "-DskipTests" # A more practical step-level var
+        run: |
+          echo "Building with MAVEN_OPTS: $MAVEN_OPTS"
+          mvn -B $MAVEN_OPTS package
 
+      - name: Report Job Status
+        if: always() # This ensures the step runs even if the job fails
+        run: |
+          echo "Build job status (job.status): ${{ job.status }}"
+
+  # --- TEST JOB ---
   test:
-    name:  Test
+    name: Test
     runs-on: ubuntu-latest
-    needs: build
+    needs: build # This job runs only after the 'build' job succeeds
+    
+    env:
+      TEST_SCOPE: "UnitTests" # Job-level env for testing
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
       - name: Run unit tests
-        run: mvn -B test
+        env:
+          MAVEN_OPTS: "-B" # Step-level env
+        run: |
+          echo "Running tests with scope: $TEST_SCOPE" # Using job-level env
+          mvn $MAVEN_OPTS test
 
+      - name: Report Job Status
+        if: always()
+        run: |
+          echo "Test job status (job.status): ${{ job.status }}"
+
+  # --- DEPLOY JOB ---
   deploy:
-    name:  Deploy to GitHub Packages
+    name: Deploy to GitHub Packages
     runs-on: ubuntu-latest
-    needs: test
+    # This job needs both 'build' and 'test' to succeed
+    # Listing them here makes their statuses available in the 'jobs' context
+    needs: [build, test] 
+    
+    # This job only runs on pushes to the 'main' branch (not on pull requests)
     if: github.ref == 'refs/heads/main'
+    
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Display Dependency Job Status
+        run: |
+          echo "Status of 'build' job (jobs.build.status): ${{ jobs.build.status }}"
+          echo "Status of 'test' job (jobs.test.status): ${{ jobs.test.status }}"
+
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
       - name: Create settings.xml with credentials
+        # This step already used step-level env vars to handle secrets
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
@@ -83,3 +141,8 @@ jobs:
 
       - name: Deploy package
         run: mvn -B deploy --settings ~/.m2/settings.xml
+
+      - name: Report Job Status
+        if: always()
+        run: |
+          echo "Deploy job status (job.status): ${{ job.status }}"
