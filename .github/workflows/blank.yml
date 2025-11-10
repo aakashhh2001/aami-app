@@ -76,11 +76,9 @@ jobs:
           cache: maven
 
       - name: Run unit tests
-        env:
-          MAVEN_OPTS: "-B" # Step-level env
         run: |
           echo "Running tests with scope: $TEST_SCOPE" # Using job-level env
-          mvn $MAVEN_OPTS test
+          mvn -B test
 
       - name: Report Job Status
         if: always()
