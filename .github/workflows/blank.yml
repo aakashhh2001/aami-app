@@ -108,8 +108,8 @@ jobs:
 
       - name: Display Dependency Job Status
         run: |
-          echo "Status of 'build' job (jobs.build.status): ${{ jobs.build.status }}"
-          echo "Status of 'test' job (jobs.test.status): ${{ jobs.test.status }}"
+          echo "Status of 'build' job (needs.build.result): ${{ needs.build.result }}"
+          echo "Status of 'test' job (needs.test.result): ${{ needs.test.result }}"
 
       - name: Set up JDK
         uses: actions/setup-java@v4
