@@ -63,7 +63,8 @@ jobs:
     
     env:
       TEST_SCOPE: "UnitTests" # Job-level env for testing
-
+      
+    if: success() && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,7 +85,15 @@ jobs:
         if: always()
         run: |
           echo "Test job status (job.status): ${{ job.status }}"
-
+  send_failure_notification:
+    needs: [build, test] # This job needs both 'build' and 'test' to have completed (regardless of their success)
+    runs-on: ubuntu-latest
+    # ⭐ This job runs ONLY if either 'build' OR 'test' failed
+    if: failure()
+    steps:
+      - name: Notify on Failure
+        run: echo "🔴 ALERT! Workflow failed in build or test stage. Please investigate."
+        
   # --- DEPLOY JOB ---
   deploy:
     name: Deploy to GitHub Packages
