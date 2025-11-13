@@ -33,7 +33,6 @@ jobs:
           echo "Runner OS: ${{ runner.os }}"
           echo "Workflow var: $WORKFLOW_VAR"
           echo "Job var: $JOB_VAR"
-
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -61,7 +60,6 @@ jobs:
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=sample-project \
             -Dsonar.projectName='sample-project'
-
       - name: Report Job Status
         run: echo "Build job status: ${{ job.status }}"
 
@@ -88,7 +86,6 @@ jobs:
         run: |
           echo "Running tests with scope: $TEST_SCOPE"
           mvn -B test
-
       - name: Report Job Status
         run: echo "Test job status: ${{ job.status }}"
 
@@ -96,6 +93,8 @@ jobs:
     name: Failure Notification
     needs: [build, test]
     runs-on: ubuntu-latest
+    # This line ensures the job ONLY runs if build or test fails
+    if: failure()
 
     steps:
       - name: Notify on Failure
@@ -105,6 +104,7 @@ jobs:
     name: Deploy to GitHub Packages
     runs-on: ubuntu-latest
     needs: [build, test]
+    # This job will only run if 'build' and 'test' succeed (default behavior)
 
     permissions:
       contents: read
@@ -118,7 +118,6 @@ jobs:
         run: |
           echo "Build job result: ${{ needs.build.result }}"
           echo "Test job result: ${{ needs.test.result }}"
-
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -145,7 +144,6 @@ jobs:
             </servers>
           </settings>
           EOF
-
       - name: Deploy package
         run: mvn -B deploy --settings ~/.m2/settings.xml
 
