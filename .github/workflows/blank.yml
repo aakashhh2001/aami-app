@@ -8,11 +8,10 @@ on:
 
 env:
   WORKFLOW_VAR: "This is a workflow-level variable"
-  JAVA_VERSION: '17'
-  JAVA_DISTRIBUTION: 'temurin'
+  JAVA_VERSION: "17"
+  JAVA_DISTRIBUTION: "temurin"
 
 jobs:
-  # --- BUILD + SONAR ---
   build:
     name: Build & Analyze with SonarQube
     runs-on: ubuntu-latest
@@ -68,7 +67,6 @@ jobs:
         if: always()
         run: echo "Build job status: ${{ job.status }}"
 
-  # --- TEST ---
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -76,7 +74,6 @@ jobs:
     env:
       TEST_SCOPE: "UnitTests"
     if: success() && github.ref == 'refs/heads/main'
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -97,7 +94,6 @@ jobs:
         if: always()
         run: echo "Test job status: ${{ job.status }}"
 
-  # --- FAILURE NOTIFICATION ---
   send_failure_notification:
     name: Failure Notification
     needs: [build, test]
@@ -107,7 +103,6 @@ jobs:
       - name: Notify on Failure
         run: echo "🔴 ALERT! Workflow failed in build or test stage. Please investigate."
 
-  # --- DEPLOY ---
   deploy:
     name: Deploy to GitHub Packages
     runs-on: ubuntu-latest
@@ -116,7 +111,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
